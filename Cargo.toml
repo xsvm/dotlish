@@ -9,6 +9,8 @@ dirs = "7.0.0"
 display-info = "0.5.10"
 enigo = "0.6.1"
 inputs = { version = "0.1.1", default-features = false, features = ["serde"] }
+# 只要播放和 MP3 解码（单词发音）
+rodio = { version = "0.23.0", default-features = false, features = ["playback", "mp3"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 single-instance = "0.3.3"

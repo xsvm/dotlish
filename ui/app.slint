@@ -10,10 +10,11 @@ export struct IssueItem {
     picked: int,
 }
 
-/// 一个词条：单词、音标、逐条释义、词形变化。
+/// 一个词条：单词、英美音标（不带斜杠）、逐条释义、词形变化。
 export struct DictData {
     word: string,
-    phonetic: string,
+    uk: string,
+    us: string,
     senses: [string],
     forms: string,
 }
@@ -56,17 +57,84 @@ component CloseButton inherits Rectangle {
     area := TouchArea { clicked => { root.clicked(); } }
 }
 
+/// 点击发音：`英 /ɪt/ 🔊`，悬停时变成强调色。
+component Pronounce inherits Rectangle {
+    in property <string> label;
+    in property <string> phonetic;
+    callback clicked();
+    property <color> tint: area.has-hover ? #2f6fde : #8a909c;
+    width: row.preferred-width;
+    height: row.preferred-height;
+    border-radius: 5px;
+    background: area.has-hover ? #2f6fde14 : transparent;
+    row := HorizontalLayout {
+        padding-left: 5px;
+        padding-right: 5px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        spacing: 5px;
+        Text {
+            text: root.phonetic == "" ? root.label : root.label + " /" + root.phonetic + "/";
+            color: root.tint;
+            font-size: 12.5px;
+            vertical-alignment: center;
+        }
+        // 小喇叭：实心机身 + 两道声波
+        Rectangle {
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+            Path {
+                viewbox-width: 12;
+                viewbox-height: 12;
+                commands: "M 1 4.5 L 3.5 4.5 L 6.5 2 L 6.5 10 L 3.5 7.5 L 1 7.5 Z";
+                fill: root.tint;
+            }
+            Path {
+                viewbox-width: 12;
+                viewbox-height: 12;
+                commands: "M 8.3 4.2 Q 9.5 6 8.3 7.8 M 9.8 2.6 Q 12.2 6 9.8 9.4";
+                stroke: root.tint;
+                stroke-width: 1.1px;
+            }
+        }
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+/// 英、美两个发音按钮。accent：1 英音、2 美音。
+component PronounceRow inherits HorizontalLayout {
+    in property <DictData> data;
+    callback speak(int);
+    spacing: 4px;
+    alignment: start;
+    Pronounce {
+        label: "英";
+        phonetic: root.data.uk;
+        clicked => { root.speak(1); }
+    }
+    Pronounce {
+        label: "美";
+        phonetic: root.data.us;
+        clicked => { root.speak(2); }
+    }
+}
+
 /// 词条。compact 用于翻译页右侧的小面板。
 component DictView inherits VerticalLayout {
     in property <DictData> data;
     in property <bool> compact;
     /// 查询中或出错时显示在单词下面
     in property <string> note;
+    callback speak(int);
     alignment: start;
     spacing: root.compact ? 6px : 10px;
 
     HorizontalLayout {
-        spacing: 14px;
+        spacing: 10px;
         alignment: start;
         Text {
             text: root.data.word;
@@ -75,18 +143,14 @@ component DictView inherits VerticalLayout {
             color: #16181d;
             wrap: word-wrap;
         }
-        if !root.compact: Text {
-            text: root.data.phonetic;
-            color: #8a909c;
-            font-size: 13px;
-            vertical-alignment: center;
+        if !root.compact && root.note == "": PronounceRow {
+            data: root.data;
+            speak(a) => { root.speak(a); }
         }
     }
-    if root.compact && root.data.phonetic != "": Text {
-        text: root.data.phonetic;
-        color: #8a909c;
-        font-size: 12px;
-        wrap: word-wrap;
+    if root.compact && root.note == "": PronounceRow {
+        data: root.data;
+        speak(a) => { root.speak(a); }
     }
     if root.note != "": Text {
         text: root.note;
@@ -152,6 +216,8 @@ export component Popup inherits Window {
     /// 翻译页选区变化：pane 0 是原文、1 是译文
     callback selection-changed(int, int, int);
     callback close-word();
+    /// 读出单词：1 英音、2 美音
+    callback speak(string, int);
 
     /// 每次新请求把焦点还给弹窗本身，文字框重新有焦点只能靠用户点击
     public function reset-focus() {
@@ -329,6 +395,7 @@ export component Popup inherits Window {
                                     compact: true;
                                     data: root.word-dict;
                                     note: root.word-note;
+                                    speak(a) => { root.speak(root.word-dict.word, a); }
                                 }
                             }
                             CloseButton {
@@ -343,6 +410,7 @@ export component Popup inherits Window {
                         DictView {
                             padding-right: 16px;
                             data: root.dict;
+                            speak(a) => { root.speak(root.dict.word, a); }
                         }
                     }
                 }

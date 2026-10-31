@@ -2,9 +2,9 @@
 
 use crate::hotkeys::{self, Action};
 use crate::services::languagetool::{self, Issue};
-use crate::services::youdao::{self, Entry};
+use crate::services::youdao::{self, Accent, Entry};
 use crate::services::{self, Res, Translation};
-use crate::{DictData, IssueItem, Popup, app, input, popup_size};
+use crate::{DictData, IssueItem, Popup, app, audio, input, popup_size};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel, Weak};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -82,6 +82,11 @@ pub fn setup(ui: &Popup) {
                 },
             )
         });
+    });
+
+    ui.on_speak(|word, accent| {
+        let accent = if accent == 1 { Accent::Uk } else { Accent::Us };
+        audio::pronounce(app::with(|a| a.agent.clone()), word.into(), accent);
     });
 
     let weak = ui.as_weak();
@@ -168,7 +173,8 @@ fn word_range(text: &str, start: usize, end: usize) -> Option<(usize, usize)> {
 fn dict_data(e: &Entry) -> DictData {
     DictData {
         word: e.word.as_str().into(),
-        phonetic: e.phonetic.as_str().into(),
+        uk: e.uk.as_str().into(),
+        us: e.us.as_str().into(),
         senses: ModelRc::new(
             e.senses
                 .iter()

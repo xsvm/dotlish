@@ -7,12 +7,15 @@ use ureq::Agent;
 
 const URL: &str = "https://dict.youdao.com/jsonapi";
 const ONLY_EC: &str = r#"{"count":99,"dicts":[["ec"]]}"#;
+/// 发音 MP3，约 15KB；同样不需要 key
+const VOICE_URL: &str = "https://dict.youdao.com/dictvoice";
 
 #[derive(Debug, PartialEq)]
 pub struct Entry {
     pub word: String,
-    /// 例如 `英 /rʌn/ · 美 /rʌn/`，没有音标时为空
-    pub phonetic: String,
+    /// 英式、美式音标（不带斜杠），没有时为空
+    pub uk: String,
+    pub us: String,
     /// 每个词性一条，例如 `v. 跑，奔跑；…`
     pub senses: Vec<String>,
     /// 词形变化，例如 `过去式 ran · 现在分词 running`，没有时为空
@@ -31,6 +34,29 @@ impl Entry {
 pub fn lookup(agent: &Agent, word: &str) -> Res<Entry> {
     let body = get(agent, URL, &[("q", word), ("dicts", ONLY_EC)])?;
     parse(word, &body)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Accent {
+    Uk,
+    Us,
+}
+
+/// 单词发音的 MP3 数据。
+pub fn voice(agent: &Agent, word: &str, accent: Accent) -> Res<Vec<u8>> {
+    let kind = match accent {
+        Accent::Uk => "1",
+        Accent::Us => "2",
+    };
+    agent
+        .get(VOICE_URL)
+        .query("audio", word)
+        .query("type", kind)
+        .call()
+        .map_err(|e| e.to_string())?
+        .body_mut()
+        .read_to_vec()
+        .map_err(|e| e.to_string())
 }
 
 /// `l.i` 有时是字符串，有时是字符串数组。
@@ -58,16 +84,7 @@ fn parse(word: &str, body: &str) -> Res<Entry> {
         return Err(format!("词典里没有找到“{word}”"));
     }
 
-    let phonetic = [("英", "ukphone"), ("美", "usphone")]
-        .iter()
-        .filter_map(|(label, key)| {
-            w[*key]
-                .as_str()
-                .filter(|p| !p.is_empty())
-                .map(|p| format!("{label} /{p}/"))
-        })
-        .collect::<Vec<_>>()
-        .join(" · ");
+    let phone = |key: &str| w[key].as_str().unwrap_or_default().to_string();
     let forms = w["wfs"]
         .as_array()
         .map(|wfs| {
@@ -88,7 +105,8 @@ fn parse(word: &str, body: &str) -> Res<Entry> {
         } else {
             shown
         },
-        phonetic,
+        uk: phone("ukphone"),
+        us: phone("usphone"),
         senses,
         forms,
     })
@@ -108,7 +126,8 @@ mod tests {
             parse("Run", body).unwrap(),
             Entry {
                 word: "run".into(),
-                phonetic: "英 /rʌn/ · 美 /rʌn/".into(),
+                uk: "rʌn".into(),
+                us: "rʌn".into(),
                 senses: vec!["v. 跑，奔跑".into(), "n. 跑步".into()],
                 forms: "过去式 ran · 现在分词 running".into(),
             }
@@ -120,7 +139,7 @@ mod tests {
         let body = r#"{"ec":{"word":[{"trs":[{"tr":[{"l":{"i":["n. 回形针助手"]}}]}]}]}}"#;
         let e = parse("clippy", body).unwrap();
         assert_eq!(
-            (e.word.as_str(), e.phonetic.as_str(), e.forms.as_str()),
+            (e.word.as_str(), e.uk.as_str(), e.forms.as_str()),
             ("clippy", "", "")
         );
         assert_eq!(e.to_text(), "clippy\nn. 回形针助手");
@@ -137,6 +156,20 @@ mod tests {
     fn live() {
         let agent = crate::services::agent(&Default::default()).unwrap();
         let e = lookup(&agent, "serendipity").unwrap();
-        assert!(!e.senses.is_empty() && !e.phonetic.is_empty());
+        assert!(!e.senses.is_empty() && !e.us.is_empty());
+    }
+
+    #[test]
+    #[ignore = "需要联网"]
+    fn live_voice() {
+        let agent = crate::services::agent(&Default::default()).unwrap();
+        for accent in [Accent::Uk, Accent::Us] {
+            // MP3 带 ID3 头
+            assert!(
+                voice(&agent, "serendipity", accent)
+                    .unwrap()
+                    .starts_with(b"ID3")
+            );
+        }
     }
 }
