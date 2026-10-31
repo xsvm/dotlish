@@ -4,6 +4,16 @@
 
 > 暂定名称，需求对齐中。
 
+## 构建与启动
+
+```bash
+cargo build --release
+```
+
+双击 `target/release/select-assist.exe` 启动。程序没有主窗口，只在任务栏托盘显示图标：右键图标进入设置或退出。重复双击不会多开。
+
+配置文件：Windows 在 `%APPDATA%\select-assist\config.toml`，macOS 在 `~/Library/Application Support/select-assist/config.toml`。
+
 ## 许可证
 
 本项目按 [PolyForm Noncommercial 1.0.0](LICENSE.md) 授权：可以免费用于个人、学习、研究和非营利组织，**禁止商业使用**。

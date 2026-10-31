@@ -1,4 +1,5 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// 托盘程序，不要控制台窗口（debug 版也一样，出错信息显示在设置窗口里）
+#![windows_subsystem = "windows"]
 
 mod app;
 mod config;
@@ -16,7 +17,25 @@ use tray_icon::{MouseButton, MouseButtonState, TrayIconEvent};
 
 slint::include_modules!();
 
+/// 单实例锁名：Windows 上是命名互斥量，macOS 上是加锁的文件路径。
+fn instance_name() -> String {
+    if cfg!(target_os = "macos") {
+        std::env::temp_dir()
+            .join("select-assist.lock")
+            .display()
+            .to_string()
+    } else {
+        "select-assist-single-instance".into()
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 已经在运行时直接退出，避免两个实例同时监听快捷键
+    let instance = single_instance::SingleInstance::new(&instance_name())?;
+    if !instance.is_single() {
+        return Ok(());
+    }
+
     let cfg = config::load();
     let agent = services::agent(&cfg)?;
 
