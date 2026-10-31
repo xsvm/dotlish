@@ -2,6 +2,9 @@
 name = "dotlish"
 version = "0.1.0"
 edition = "2024"
+description = "给英语学习者的划词助手：选中文本，按快捷键翻译、查词、发音或纠错"
+license = "PolyForm-Noncommercial-1.0.0"
+repository = "https://github.com/xsvm/dotlish"
 
 [dependencies]
 arboard = "3.7.0"
