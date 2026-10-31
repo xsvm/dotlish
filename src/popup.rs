@@ -4,8 +4,8 @@ use crate::hotkeys::{self, Action};
 use crate::services::languagetool::{self, Issue};
 use crate::services::youdao::{self, Entry};
 use crate::services::{self, Res, Translation};
-use crate::{IssueItem, Popup, app, input, popup_size};
-use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, Weak};
+use crate::{DictData, IssueItem, Popup, app, input, popup_size};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel, Weak};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -23,10 +23,14 @@ struct State {
     model: Rc<VecModel<IssueItem>>,
     /// 复制/替换时使用的结果
     result: String,
+    /// 翻译页右侧正在显示的单词
+    word: String,
 }
 
 thread_local! {
     static STATE: RefCell<State> = RefCell::default();
+    /// 拖动选择时选区连续变化，停下来再查词
+    static WORD_TIMER: Timer = Timer::default();
 }
 
 /// 绑定弹窗的回调，启动时调用一次。
@@ -63,6 +67,116 @@ pub fn setup(ui: &Popup) {
             show_check_summary(&ui, &s);
         });
     });
+
+    let weak = ui.as_weak();
+    ui.on_selection_changed(move |pane, anchor, cursor| {
+        let weak = weak.clone();
+        WORD_TIMER.with(|t| {
+            t.start(
+                TimerMode::SingleShot,
+                Duration::from_millis(150),
+                move || {
+                    if let Some(ui) = weak.upgrade() {
+                        pick_word(&ui, pane, anchor, cursor);
+                    }
+                },
+            )
+        });
+    });
+
+    let weak = ui.as_weak();
+    ui.on_close_word(move || {
+        if let Some(ui) = weak.upgrade() {
+            ui.set_word_open(false);
+        }
+        STATE.with(|s| s.borrow_mut().word.clear());
+    });
+}
+
+/// 点在单词上：选中整个词；选中的正好是一个词：直接用。然后在右侧查释义。
+fn pick_word(ui: &Popup, pane: i32, anchor: i32, cursor: i32) {
+    let (a, c) = (anchor.max(0) as usize, cursor.max(0) as usize);
+    let found = STATE.with(|s| {
+        let s = s.borrow();
+        let text = if pane == 0 { &s.text } else { &s.result };
+        let (start, end) = word_range(text, a.min(c), a.max(c))?;
+        let word = &text[start..end];
+        (!word.eq_ignore_ascii_case(&s.word)).then(|| (word.to_string(), start, end))
+    });
+    let Some((word, start, end)) = found else {
+        return;
+    };
+    if a == c {
+        ui.invoke_select_word(pane, start as i32, end as i32);
+    }
+
+    let seq = STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        s.word = word.clone();
+        s.seq
+    });
+    ui.set_word_dict(DictData {
+        word: word.as_str().into(),
+        ..Default::default()
+    });
+    ui.set_word_note("查询中…".into());
+    ui.set_word_open(true);
+
+    let agent = app::with(|a| a.agent.clone());
+    let weak = ui.as_weak();
+    std::thread::spawn(move || {
+        let r = youdao::lookup(&agent, &word);
+        deliver(weak, seq, move |ui| {
+            // 查询期间又点了别的词
+            if STATE.with(|s| s.borrow().word != word) {
+                return;
+            }
+            match r {
+                Ok(e) => {
+                    ui.set_word_dict(dict_data(&e));
+                    ui.set_word_note("".into());
+                }
+                Err(e) => ui.set_word_note(e.into()),
+            }
+        });
+    });
+}
+
+/// 选区 [start, end)（UTF-8 字节偏移）对应的英文单词范围。
+/// start == end 时取光标所在的词；否则选中的内容去掉两端标点、空格后必须正好是一个词。
+/// 只扫描这个词附近，O(词长)。
+fn word_range(text: &str, start: usize, end: usize) -> Option<(usize, usize)> {
+    let b = text.as_bytes();
+    let is_word = |c: &&u8| c.is_ascii_alphabetic() || **c == b'-' || **c == b'\'';
+    let (s, e) = if start == end {
+        let p = start.min(b.len());
+        (
+            p - b[..p].iter().rev().take_while(is_word).count(),
+            p + b[p..].iter().take_while(is_word).count(),
+        )
+    } else {
+        (start, end)
+    };
+    // 只去掉两端的标点和空格；中文等文字不去掉，这样选中中英混排时不会误判成一个词
+    let not_letter = |c: char| !c.is_alphabetic();
+    let range = text.get(s..e)?;
+    let s = s + range.len() - range.trim_start_matches(not_letter).len();
+    let w = range.trim_matches(not_letter);
+    services::is_single_word(w).then_some((s, s + w.len()))
+}
+
+fn dict_data(e: &Entry) -> DictData {
+    DictData {
+        word: e.word.as_str().into(),
+        phonetic: e.phonetic.as_str().into(),
+        senses: ModelRc::new(
+            e.senses
+                .iter()
+                .map(SharedString::from)
+                .collect::<VecModel<_>>(),
+        ),
+        forms: e.forms.as_str().into(),
+    }
 }
 
 fn hide(weak: &Weak<Popup>) {
@@ -175,6 +289,8 @@ pub fn run(action: Action) {
     );
     ui.set_note("".into());
     ui.set_service("".into());
+    ui.set_word_open(false);
+    ui.invoke_reset_focus();
     // 切换功能时弹窗留在原处
     if !visible {
         show_at_cursor(&ui);
@@ -273,16 +389,7 @@ fn on_looked_up(ui: &Popup, r: Res<Entry>) {
     ui.set_mode("dict".into());
     ui.set_heading("词典".into());
     ui.set_service("有道词典".into());
-    ui.set_source_text(entry.word.as_str().into());
-    ui.set_phonetic(entry.phonetic.as_str().into());
-    ui.set_senses(ModelRc::new(
-        entry
-            .senses
-            .iter()
-            .map(SharedString::from)
-            .collect::<VecModel<_>>(),
-    ));
-    ui.set_extra(entry.forms.as_str().into());
+    ui.set_dict(dict_data(&entry));
     STATE.with(|s| s.borrow_mut().result = entry.to_text());
 }
 
@@ -292,5 +399,47 @@ fn show_error(ui: &Popup, msg: &str) {
     ui.set_result_text(msg.into());
     if !ui.window().is_visible() {
         show_at_cursor(ui);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::word_range;
+
+    fn word(text: &str, start: usize, end: usize) -> Option<&str> {
+        word_range(text, start, end).map(|(s, e)| &text[s..e])
+    }
+
+    #[test]
+    fn click_inside_word() {
+        let t = "The popup holds keyboard focus.";
+        assert_eq!(word(t, 6, 6), Some("popup"));
+        // 光标在词首、词尾都算这个词
+        assert_eq!(word(t, 4, 4), Some("popup"));
+        assert_eq!(word(t, 30, 30), Some("focus"));
+        assert_eq!(word(t, 31, 31), None);
+    }
+
+    #[test]
+    fn click_keeps_apostrophe_and_hyphen() {
+        assert_eq!(word("it's well-known", 1, 1), Some("it's"));
+        assert_eq!(word("it's well-known", 7, 7), Some("well-known"));
+        assert_eq!(word("say 'hello'", 7, 7), Some("hello"));
+    }
+
+    #[test]
+    fn selection_must_be_one_word() {
+        let t = "The popup holds";
+        assert_eq!(word(t, 3, 10), Some("popup"));
+        assert_eq!(word(t, 0, 9), None);
+    }
+
+    #[test]
+    fn non_english() {
+        let t = "弹出窗口 focus 焦点";
+        assert_eq!(word(t, 3, 3), None);
+        assert_eq!(word(t, 0, t.len()), None);
+        assert_eq!(word(t, 12, 19), Some("focus"));
+        assert_eq!(word(t, 12, 25), None);
     }
 }
