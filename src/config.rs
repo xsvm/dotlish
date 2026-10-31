@@ -56,13 +56,17 @@ pub fn load() -> Config {
         }),
         Err(_) => {
             let cfg = Config::default();
-            if let Some(dir) = path.parent() {
-                let _ = std::fs::create_dir_all(dir);
-            }
-            if let Ok(s) = toml::to_string_pretty(&cfg) {
-                let _ = std::fs::write(&path, s);
-            }
+            let _ = save(&cfg);
             cfg
         }
     }
+}
+
+pub fn save(cfg: &Config) -> Result<(), String> {
+    let path = path().ok_or("找不到配置目录")?;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let s = toml::to_string_pretty(cfg).map_err(|e| e.to_string())?;
+    std::fs::write(&path, s).map_err(|e| format!("保存配置失败：{e}"))
 }
