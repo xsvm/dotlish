@@ -22,11 +22,11 @@ slint::include_modules!();
 fn instance_name() -> String {
     if cfg!(target_os = "macos") {
         std::env::temp_dir()
-            .join("select-assist.lock")
+            .join("dotlish.lock")
             .display()
             .to_string()
     } else {
-        "select-assist-single-instance".into()
+        "dotlish-single-instance".into()
     }
 }
 

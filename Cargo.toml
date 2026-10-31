@@ -1,5 +1,5 @@
 [package]
-name = "select-assist"
+name = "dotlish"
 version = "0.1.0"
 edition = "2024"
 

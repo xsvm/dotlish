@@ -28,7 +28,7 @@ impl Tray {
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_menu_on_left_click(false)
-            .with_tooltip("select-assist")
+            .with_tooltip("Dotlish")
             .with_icon(icon)
             .build()
             .map_err(|e| e.to_string())?;

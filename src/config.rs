@@ -44,12 +44,28 @@ impl Default for Hotkeys {
     }
 }
 
+const APP_DIR: &str = "dotlish";
+/// 改名前的配置目录
+const OLD_APP_DIR: &str = "select-assist";
+
 pub fn path() -> Option<PathBuf> {
-    dirs::config_dir().map(|d| d.join("select-assist").join("config.toml"))
+    dirs::config_dir().map(|d| d.join(APP_DIR).join("config.toml"))
+}
+
+/// 改名前的配置目录整个搬过来，快捷键等设置不丢。
+fn migrate() {
+    let Some(base) = dirs::config_dir() else {
+        return;
+    };
+    let (old, new) = (base.join(OLD_APP_DIR), base.join(APP_DIR));
+    if old.exists() && !new.exists() {
+        let _ = std::fs::rename(old, new);
+    }
 }
 
 /// 读取配置；文件不存在时写入默认配置，方便用户找到并修改。
 pub fn load() -> Config {
+    migrate();
     let Some(path) = path() else {
         return Config::default();
     };
