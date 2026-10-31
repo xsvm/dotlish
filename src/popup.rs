@@ -108,26 +108,24 @@ pub fn run(action: Action) {
         }
     });
 
-    if action != Action::Fix {
-        ui.set_mode("loading".into());
-        ui.set_heading(
-            if action == Action::Check {
-                "纠错"
-            } else {
-                "翻译"
-            }
-            .into(),
-        );
-        ui.set_note("".into());
-        ui.set_service("".into());
-        show_at_cursor(&ui);
-    }
+    ui.set_mode("loading".into());
+    ui.set_heading(
+        if action == Action::Check {
+            "纠错"
+        } else {
+            "翻译"
+        }
+        .into(),
+    );
+    ui.set_note("".into());
+    ui.set_service("".into());
+    show_at_cursor(&ui);
 
     let weak = ui.as_weak();
     std::thread::spawn(move || match action {
-        Action::Check | Action::Fix => {
+        Action::Check => {
             let r = languagetool::check(&agent, &text);
-            let _ = weak.upgrade_in_event_loop(move |ui| on_checked(&ui, action, r));
+            let _ = weak.upgrade_in_event_loop(move |ui| on_checked(&ui, r));
         }
         Action::Translate if services::is_single_word(&text) => {
             let word = text.trim().to_string();
@@ -141,7 +139,7 @@ pub fn run(action: Action) {
     });
 }
 
-fn on_checked(ui: &Popup, action: Action, r: Res<Vec<Issue>>) {
+fn on_checked(ui: &Popup, r: Res<Vec<Issue>>) {
     let issues = match r {
         Ok(i) => i,
         Err(e) => return show_error(ui, &e),
@@ -154,14 +152,6 @@ fn on_checked(ui: &Popup, action: Action, r: Res<Vec<Issue>>) {
             .collect();
         s.issues = issues;
         s.result = languagetool::apply(&s.text, &s.issues, &s.picks);
-
-        if action == Action::Fix {
-            // 一键修正不弹窗，焦点还在原程序里，直接粘贴
-            if !s.issues.is_empty() {
-                input::replace_selection(&s.result);
-            }
-            return;
-        }
         s.model = Rc::new((0..s.issues.len()).map(|i| issue_item(&s, i)).collect());
         ui.set_issues(ModelRc::from(s.model.clone()));
         ui.set_mode("check".into());

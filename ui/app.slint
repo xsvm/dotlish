@@ -52,13 +52,16 @@ export component Popup inherits Window {
     background: #fbfbfc;
     default-font-size: 14px;
 
+    // 纠错有问题时可修正，翻译总可替换
+    property <bool> can-replace: root.mode == "translate" || (root.mode == "check" && root.issues.length > 0);
+
     keys := FocusScope {
         key-pressed(event) => {
             if (event.text == Key.Escape) {
                 root.dismiss();
                 return accept;
             }
-            if (event.text == Key.Return && event.modifiers.control && root.mode != "dict") {
+            if (event.text == Key.Return && event.modifiers.control && root.can-replace) {
                 root.replace();
                 return accept;
             }
@@ -202,8 +205,8 @@ export component Popup inherits Window {
                     text: "复制";
                     clicked => { root.copy-result(); }
                 }
-                if root.mode == "check" || root.mode == "translate": Button {
-                    text: "替换";
+                if root.can-replace: Button {
+                    text: root.mode == "check" ? "修正" : "替换";
                     primary: true;
                     clicked => { root.replace(); }
                 }

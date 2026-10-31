@@ -16,7 +16,6 @@ pub struct Config {
 #[serde(default)]
 pub struct Hotkeys {
     pub check: String,
-    pub fix: String,
     pub translate: String,
 }
 
@@ -40,7 +39,6 @@ impl Default for Hotkeys {
         };
         Self {
             check: format!("{m}+Alt+KeyG"),
-            fix: format!("{m}+Alt+Shift+KeyG"),
             translate: format!("{m}+Alt+KeyT"),
         }
     }

@@ -14,21 +14,16 @@ use std::sync::Mutex;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Action {
     Check,
-    Fix,
     Translate,
 }
 
 /// 设置界面里的顺序。
-pub const ACTIONS: [(Action, &str); 3] = [
-    (Action::Check, "纠错"),
-    (Action::Fix, "一键修正"),
-    (Action::Translate, "翻译 / 查词"),
-];
+pub const ACTIONS: [(Action, &str); 2] =
+    [(Action::Check, "纠错"), (Action::Translate, "翻译 / 查词")];
 
 pub fn get(hk: &Hotkeys, action: Action) -> &str {
     match action {
         Action::Check => &hk.check,
-        Action::Fix => &hk.fix,
         Action::Translate => &hk.translate,
     }
 }
@@ -36,7 +31,6 @@ pub fn get(hk: &Hotkeys, action: Action) -> &str {
 pub fn set(hk: &mut Hotkeys, action: Action, spec: String) {
     match action {
         Action::Check => hk.check = spec,
-        Action::Fix => hk.fix = spec,
         Action::Translate => hk.translate = spec,
     }
 }
@@ -154,7 +148,7 @@ mod tests {
     fn parse_all_and_conflicts() {
         let mut hk = Hotkeys::default();
         let bindings = parse_all(&hk).unwrap();
-        assert_eq!(bindings.len(), 3);
+        assert_eq!(bindings.len(), 2);
         assert!(conflicts(&bindings).is_empty());
 
         hk.translate = hk.check.clone();
@@ -163,7 +157,7 @@ mod tests {
             [Action::Check, Action::Translate]
         );
 
-        hk.fix = "MouseLeft".into();
+        hk.translate = "MouseLeft".into();
         hk.check = "Nope+KeyG".into();
         assert_eq!(parse_all(&hk).unwrap_err().len(), 2);
     }

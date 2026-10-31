@@ -304,19 +304,19 @@ mod tests {
 
     #[test]
     fn lone_modifier_tap() {
-        let mut m = matcher(&[("ControlRight", Action::Fix)]);
+        let mut m = matcher(&[("ControlRight", Action::Translate)]);
         let rctrl = key(KeyCode::ControlRight);
         // 按下时 mods 里已含自身也算单独
         assert_eq!(m.handle(down(rctrl, CTRL)), (false, None));
         assert_eq!(
             m.handle(Input::Up { trigger: rctrl }),
-            (false, Some(Signal::Fire(Action::Fix)))
+            (false, Some(Signal::Fire(Action::Translate)))
         );
     }
 
     #[test]
     fn modifier_used_in_combo_is_not_a_tap() {
-        let mut m = matcher(&[("ControlRight", Action::Fix)]);
+        let mut m = matcher(&[("ControlRight", Action::Translate)]);
         let rctrl = key(KeyCode::ControlRight);
         m.handle(down(rctrl, CTRL));
         m.handle(down(key(KeyCode::KeyC), CTRL));
