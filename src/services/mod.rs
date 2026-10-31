@@ -111,35 +111,28 @@ pub fn is_single_word(s: &str) -> bool {
 pub struct Translation {
     pub text: String,
     pub service: &'static str,
-    pub note: String,
 }
 
 type TranslateFn = fn(&Agent, &str, &str) -> Res<String>;
 
 /// 按顺序尝试，前一个失败自动换下一个。加新服务只需要在这里加一行。
 const TRANSLATORS: &[(&str, TranslateFn)] = &[
-    ("Google", google::translate),
     ("Bing", bing::translate),
     ("火山", volcengine::translate),
     ("阿里", alibaba::translate),
+    ("Google", google::translate),
     ("MyMemory", mymemory::translate),
 ];
 
 pub fn translate(agent: &Agent, text: &str, target: &str) -> Res<Translation> {
     let target = if contains_cjk(text) { "en" } else { target };
     let mut errors = Vec::new();
-    for (i, (name, f)) in TRANSLATORS.iter().enumerate() {
+    for (name, f) in TRANSLATORS {
         match f(agent, text, target) {
             Ok(t) => {
-                let note = if i == 0 {
-                    String::new()
-                } else {
-                    format!("{} 不可用，已改用 {name}", TRANSLATORS[0].0)
-                };
                 return Ok(Translation {
                     text: t,
                     service: name,
-                    note,
                 });
             }
             Err(e) => errors.push(format!("{name}：{e}")),

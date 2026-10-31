@@ -193,7 +193,6 @@ fn on_translated(ui: &Popup, source: &str, r: Res<Translation>) {
     };
     ui.set_mode("translate".into());
     ui.set_service(t.service.into());
-    ui.set_note(t.note.into());
     ui.set_source_text(source.into());
     ui.set_result_text(t.text.as_str().into());
     STATE.with(|s| s.borrow_mut().result = t.text);
