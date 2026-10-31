@@ -26,6 +26,17 @@ pub fn init(app: App) {
     APP.with(|a| *a.borrow_mut() = Some(app));
 }
 
+/// 退出前显式释放。不能留给线程局部变量在进程退出时析构：那时 Windows 已经结束了
+/// 钩子线程，Listener 再去 join 会 panic。
+pub fn shutdown() {
+    let app = APP.with(|a| a.borrow_mut().take());
+    if let Some(mut app) = app
+        && let Some(listener) = app.listener.take()
+    {
+        listener.stop();
+    }
+}
+
 /// 闭包里不要调用会再次进入 with 的函数（比如显示窗口的流程），先把需要的东西取出来。
 pub fn with<R>(f: impl FnOnce(&mut App) -> R) -> R {
     APP.with(|a| f(a.borrow_mut().as_mut().expect("App 未初始化")))
