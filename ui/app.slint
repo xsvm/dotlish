@@ -38,6 +38,10 @@ export component Popup inherits Window {
     in property <string> source-text;
     in property <string> result-text;
     in property <[IssueItem]> issues;
+    // 词典：音标、逐条释义、词形变化
+    in property <string> phonetic;
+    in property <[string]> senses;
+    in property <string> extra;
     in property <image> window-icon;
 
     callback dismiss();
@@ -97,7 +101,16 @@ export component Popup inherits Window {
                     height: 26px;
                     border-radius: 6px;
                     background: close-area.has-hover ? #f1f2f5 : transparent;
-                    Text { text: "✕"; color: #737a87; }
+                    // 用矢量画叉，不依赖字体里有没有 ✕ 这个字形
+                    Path {
+                        width: 10px;
+                        height: 10px;
+                        viewbox-width: 10;
+                        viewbox-height: 10;
+                        commands: "M 0 0 L 10 10 M 10 0 L 0 10";
+                        stroke: close-area.has-hover ? #1d1f24 : #737a87;
+                        stroke-width: 1.5px;
+                    }
                     close-area := TouchArea { clicked => { root.dismiss(); } }
                 }
             }
@@ -125,7 +138,7 @@ export component Popup inherits Window {
                 if root.mode == "check": ScrollView {
                     VerticalLayout {
                         spacing: 10px;
-                        padding-right: 8px;
+                        padding-right: 16px;
                         Text {
                             text: root.result-text;
                             font-size: 15px;
@@ -157,36 +170,59 @@ export component Popup inherits Window {
                     }
                 }
 
-                if root.mode == "translate": HorizontalLayout {
-                    spacing: 24px;
-                    Text {
-                        text: root.source-text;
-                        color: #737a87;
-                        wrap: word-wrap;
-                        vertical-alignment: top;
-                        horizontal-stretch: 1;
-                    }
-                    Text {
-                        text: root.result-text;
-                        font-size: 15px;
-                        wrap: word-wrap;
-                        vertical-alignment: top;
-                        horizontal-stretch: 1;
+                if root.mode == "translate": ScrollView {
+                    HorizontalLayout {
+                        spacing: 24px;
+                        padding-right: 16px;
+                        alignment: start;
+                        Text {
+                            text: root.source-text;
+                            color: #737a87;
+                            wrap: word-wrap;
+                            vertical-alignment: top;
+                            horizontal-stretch: 1;
+                        }
+                        Text {
+                            text: root.result-text;
+                            font-size: 15px;
+                            wrap: word-wrap;
+                            vertical-alignment: top;
+                            horizontal-stretch: 1;
+                        }
                     }
                 }
 
-                if root.mode == "dict": VerticalLayout {
-                    alignment: start;
-                    spacing: 10px;
-                    Text {
-                        text: root.source-text;
-                        font-size: 26px;
-                        font-weight: 600;
-                    }
-                    Text {
-                        text: root.result-text;
-                        font-size: 15px;
-                        wrap: word-wrap;
+                if root.mode == "dict": ScrollView {
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 8px;
+                        padding-right: 16px;
+                        HorizontalLayout {
+                            spacing: 14px;
+                            alignment: start;
+                            Text {
+                                text: root.source-text;
+                                font-size: 26px;
+                                font-weight: 600;
+                            }
+                            Text {
+                                text: root.phonetic;
+                                color: #737a87;
+                                font-size: 13px;
+                                vertical-alignment: center;
+                            }
+                        }
+                        for sense in root.senses: Text {
+                            text: sense;
+                            font-size: 15px;
+                            wrap: word-wrap;
+                        }
+                        if root.extra != "": Text {
+                            text: root.extra;
+                            color: #737a87;
+                            font-size: 12.5px;
+                            wrap: word-wrap;
+                        }
                     }
                 }
             }

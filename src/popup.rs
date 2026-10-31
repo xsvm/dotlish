@@ -2,7 +2,8 @@
 
 use crate::hotkeys::Action;
 use crate::services::languagetool::{self, Issue};
-use crate::services::{self, Res, Translation, youdao};
+use crate::services::youdao::{self, Entry};
+use crate::services::{self, Res, Translation};
 use crate::{IssueItem, Popup, app, input, popup_size};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, Weak};
 use std::cell::RefCell;
@@ -128,9 +129,8 @@ pub fn run(action: Action) {
             let _ = weak.upgrade_in_event_loop(move |ui| on_checked(&ui, r));
         }
         Action::Translate if services::is_single_word(&text) => {
-            let word = text.trim().to_string();
-            let r = youdao::lookup(&agent, &word);
-            let _ = weak.upgrade_in_event_loop(move |ui| on_looked_up(&ui, word, r));
+            let r = youdao::lookup(&agent, text.trim());
+            let _ = weak.upgrade_in_event_loop(move |ui| on_looked_up(&ui, r));
         }
         Action::Translate => {
             let r = services::translate(&agent, &text, &target);
@@ -199,17 +199,25 @@ fn on_translated(ui: &Popup, source: &str, r: Res<Translation>) {
     STATE.with(|s| s.borrow_mut().result = t.text);
 }
 
-fn on_looked_up(ui: &Popup, word: String, r: Res<String>) {
-    let explain = match r {
+fn on_looked_up(ui: &Popup, r: Res<Entry>) {
+    let entry = match r {
         Ok(e) => e,
         Err(e) => return show_error(ui, &e),
     };
     ui.set_mode("dict".into());
     ui.set_heading("词典".into());
     ui.set_service("有道词典".into());
-    ui.set_source_text(word.into());
-    ui.set_result_text(explain.as_str().into());
-    STATE.with(|s| s.borrow_mut().result = explain);
+    ui.set_source_text(entry.word.as_str().into());
+    ui.set_phonetic(entry.phonetic.as_str().into());
+    ui.set_senses(ModelRc::new(
+        entry
+            .senses
+            .iter()
+            .map(SharedString::from)
+            .collect::<VecModel<_>>(),
+    ));
+    ui.set_extra(entry.forms.as_str().into());
+    STATE.with(|s| s.borrow_mut().result = entry.to_text());
 }
 
 fn show_error(ui: &Popup, msg: &str) {
