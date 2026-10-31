@@ -1,7 +1,6 @@
 //! 全局状态。只在 UI 线程访问。
 
 use crate::config::Config;
-use crate::hotkeys::Registry;
 use crate::tray::Tray;
 use crate::{Popup, SettingsWindow};
 use slint::ComponentHandle;
@@ -12,9 +11,10 @@ pub struct App {
     pub cfg: Config,
     /// 共用一个 Agent 复用连接；改代理后整体替换
     pub agent: Agent,
-    pub registry: Registry,
     pub popup: Popup,
     pub settings: SettingsWindow,
+    /// 全局输入钩子，丢弃即停止
+    pub listener: Option<inputs::Listener>,
     pub tray: Option<Tray>,
 }
 

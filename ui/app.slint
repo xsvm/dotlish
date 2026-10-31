@@ -38,6 +38,7 @@ export component Popup inherits Window {
     in property <string> source-text;
     in property <string> result-text;
     in property <[IssueItem]> issues;
+    in property <image> window-icon;
 
     callback dismiss();
     callback copy-result();
@@ -47,6 +48,7 @@ export component Popup inherits Window {
     no-frame: true;
     always-on-top: true;
     title: "select-assist";
+    icon: root.window-icon;
     background: #fbfbfc;
     default-font-size: 14px;
 

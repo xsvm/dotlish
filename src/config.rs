@@ -11,7 +11,7 @@ pub struct Config {
     pub target_lang: String,
 }
 
-/// 写法见 global-hotkey：`CmdOrCtrl+Alt+G`，CmdOrCtrl 在 macOS 上是 ⌘，其他平台是 Ctrl。
+/// 写法见 hotkeys::binding，例如 `Ctrl+Alt+KeyG`、`MouseBack`；空字符串表示未设置。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Hotkeys {
@@ -32,10 +32,16 @@ impl Default for Config {
 
 impl Default for Hotkeys {
     fn default() -> Self {
+        // macOS 习惯用 ⌘（Meta），其他平台用 Ctrl
+        let m = if cfg!(target_os = "macos") {
+            "Meta"
+        } else {
+            "Ctrl"
+        };
         Self {
-            check: "CmdOrCtrl+Alt+G".into(),
-            fix: "CmdOrCtrl+Alt+Shift+G".into(),
-            translate: "CmdOrCtrl+Alt+T".into(),
+            check: format!("{m}+Alt+KeyG"),
+            fix: format!("{m}+Alt+Shift+KeyG"),
+            translate: format!("{m}+Alt+KeyT"),
         }
     }
 }

@@ -23,8 +23,8 @@ impl Tray {
         menu.append_items(&[&settings, &PredefinedMenuItem::separator(), &quit])
             .map_err(|e| e.to_string())?;
 
-        const SIZE: u32 = 32;
-        let icon = Icon::from_rgba(icon_rgba(SIZE), SIZE, SIZE).map_err(|e| e.to_string())?;
+        let icon = Icon::from_rgba(icon_rgba(ICON_SIZE), ICON_SIZE, ICON_SIZE)
+            .map_err(|e| e.to_string())?;
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_menu_on_left_click(false)
@@ -48,6 +48,16 @@ impl Tray {
             None
         }
     }
+}
+
+const ICON_SIZE: u32 = 32;
+
+/// 窗口图标与托盘图标一致。
+pub fn window_icon() -> slint::Image {
+    let px = icon_rgba(ICON_SIZE);
+    slint::Image::from_rgba8(slint::SharedPixelBuffer::clone_from_slice(
+        &px, ICON_SIZE, ICON_SIZE,
+    ))
 }
 
 /// 临时图标：蓝色圆角方块上两条白线（代表文字）。以后换成正式图标。

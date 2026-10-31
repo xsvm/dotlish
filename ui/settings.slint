@@ -1,4 +1,4 @@
-import { AboutSlint, Button, ComboBox, LineEdit } from "std-widgets.slint";
+import { Button, ComboBox, LineEdit } from "std-widgets.slint";
 
 export struct HotkeyRow {
     name: string,
@@ -16,116 +16,95 @@ component Label inherits Text {
 }
 
 export component SettingsWindow inherits Window {
+    in property <image> window-icon;
     in property <[HotkeyRow]> hotkeys;
     // 正在录制的行，-1 表示没有
-    in-out property <int> recording: -1;
+    in property <int> recording: -1;
     in-out property <string> proxy;
     in property <[string]> languages;
     in-out property <int> language-index;
     in property <string> error;
 
-    callback key-recorded(int, string, bool, bool, bool, bool);
+    // 再点一次同一行表示取消录制
+    callback toggle-record(int);
     callback clear-hotkey(int);
     callback reset-defaults();
     callback cancel();
     callback save();
 
     title: "select-assist 设置";
+    icon: root.window-icon;
     preferred-width: 520px;
     min-width: 460px;
     default-font-size: 14px;
 
-    keys := FocusScope {
-        key-pressed(event) => {
-            if (root.recording < 0) {
-                return reject;
+    VerticalLayout {
+        padding: 20px;
+        spacing: 12px;
+
+        Section { text: "快捷键"; }
+        for row[i] in root.hotkeys: HorizontalLayout {
+            spacing: 8px;
+            Label { text: row.name; horizontal-stretch: 1; }
+            Button {
+                text: root.recording == i ? "请按下按键或鼠标键…" : row.display;
+                min-width: 220px;
+                clicked => { root.toggle-record(i); }
             }
-            if (event.text == Key.Escape) {
-                root.recording = -1;
-                return accept;
+            Button {
+                text: "清除";
+                clicked => { root.clear-hotkey(i); }
             }
-            if (event.text == Key.Backspace && !event.modifiers.control && !event.modifiers.alt) {
-                root.clear-hotkey(root.recording);
-                return accept;
-            }
-            root.key-recorded(root.recording, event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta);
-            accept
+        }
+        Text {
+            text: "点击后按下任意键、组合键或鼠标键（左右键需配合 Ctrl / Alt 等修饰键）；单独轻按一下 Ctrl、Alt 等修饰键也可以；Esc 取消。";
+            color: #737a87;
+            font-size: 12px;
+            wrap: word-wrap;
         }
 
-        VerticalLayout {
-            padding: 20px;
+        Section { text: "网络与翻译"; }
+        HorizontalLayout {
             spacing: 12px;
+            Label { text: "代理"; }
+            LineEdit {
+                text <=> root.proxy;
+                placeholder-text: "留空则读取 HTTPS_PROXY 环境变量";
+                horizontal-stretch: 1;
+            }
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            Label { text: "翻译成"; }
+            ComboBox {
+                model: root.languages;
+                current-index <=> root.language-index;
+                horizontal-stretch: 1;
+            }
+        }
 
-            Section { text: "快捷键"; }
-            for row[i] in root.hotkeys: HorizontalLayout {
-                spacing: 12px;
-                Label { text: row.name; horizontal-stretch: 1; }
-                Button {
-                    text: root.recording == i ? "请按下组合键…" : row.display;
-                    min-width: 200px;
-                    clicked => {
-                        root.recording = root.recording == i ? -1 : i;
-                        keys.focus();
-                    }
-                }
-            }
-            Text {
-                text: "点击后直接按组合键，需要包含 Ctrl / Alt 等修饰键；Esc 取消，Backspace 清除。";
-                color: #737a87;
-                font-size: 12px;
-                wrap: word-wrap;
-            }
+        if root.error != "": Text {
+            text: root.error;
+            color: #d4473b;
+            wrap: word-wrap;
+        }
 
-            Section { text: "网络与翻译"; }
-            HorizontalLayout {
-                spacing: 12px;
-                Label { text: "代理"; }
-                LineEdit {
-                    text <=> root.proxy;
-                    placeholder-text: "留空则读取 HTTPS_PROXY 环境变量";
-                    horizontal-stretch: 1;
-                }
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: end;
+            Button {
+                text: "恢复默认";
+                clicked => { root.reset-defaults(); }
             }
-            HorizontalLayout {
-                spacing: 12px;
-                Label { text: "翻译成"; }
-                ComboBox {
-                    model: root.languages;
-                    current-index <=> root.language-index;
-                    horizontal-stretch: 1;
-                }
+            Button {
+                text: "取消";
+                clicked => { root.cancel(); }
             }
-
-            if root.error != "": Text {
-                text: root.error;
-                color: #d4473b;
-                wrap: word-wrap;
+            Button {
+                text: "保存";
+                primary: true;
+                clicked => { root.save(); }
             }
-
-            HorizontalLayout {
-                spacing: 8px;
-                alignment: end;
-                Button {
-                    text: "恢复默认";
-                    clicked => { root.reset-defaults(); }
-                }
-                Button {
-                    text: "取消";
-                    clicked => { root.cancel(); }
-                }
-                Button {
-                    text: "保存";
-                    primary: true;
-                    clicked => { root.save(); }
-                }
-            }
-
-            Rectangle {
-                height: 1px;
-                background: #e5e7eb;
-            }
-            // Slint Royalty-free 许可要求的署名
-            AboutSlint { }
         }
     }
 }
