@@ -36,6 +36,8 @@ pub enum Signal {
     Fire(Action),
     Recorded(Binding),
     RecordCancelled,
+    /// 鼠标在别处按下（不是快捷键）。由 `hotkeys::start` 产生，不经过 Matcher。
+    Click,
 }
 
 pub struct Matcher {

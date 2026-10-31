@@ -10,6 +10,7 @@ use inputs::{EventDisposition, EventKind, EventKinds, Listener};
 use matcher::{Input, Matcher};
 pub use matcher::{Mode, Signal};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Action {
@@ -81,6 +82,13 @@ pub fn set_mode(mode: Mode) {
     matcher().set_mode(mode);
 }
 
+/// 打开时上报每次鼠标按下（`Signal::Click`），用于点击弹窗外部关闭；弹窗关着时不打扰 UI 线程。
+static WATCH_CLICKS: AtomicBool = AtomicBool::new(false);
+
+pub fn watch_clicks(on: bool) {
+    WATCH_CLICKS.store(on, Ordering::Relaxed);
+}
+
 fn to_input(kind: &EventKind) -> Option<Input> {
     Some(match kind {
         EventKind::Key(k) => {
@@ -127,9 +135,18 @@ pub fn start(on_signal: impl Fn(Signal) + Send + Sync + 'static) -> Result<Liste
             let Some(input) = to_input(&event.kind) else {
                 return EventDisposition::Pass;
             };
+            let mouse_down = matches!(
+                input,
+                Input::Down {
+                    trigger: Trigger::Mouse(_),
+                    ..
+                }
+            );
             let (suppress, signal) = matcher().handle(input);
             if let Some(s) = signal {
                 on_signal(s);
+            } else if mouse_down && !suppress && WATCH_CLICKS.load(Ordering::Relaxed) {
+                on_signal(Signal::Click);
             }
             if suppress {
                 EventDisposition::Suppress

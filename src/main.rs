@@ -66,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Signal::Fire(action) => popup::run(action),
             Signal::Recorded(b) => settings::on_recorded(Some(b)),
             Signal::RecordCancelled => settings::on_recorded(None),
+            Signal::Click => popup::on_click(),
         });
     }) {
         Ok(l) => app::with(|a| a.listener = Some(l)),

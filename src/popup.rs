@@ -1,6 +1,6 @@
 //! 弹窗：按快捷键后取词、请求服务、显示结果、复制或替换回原处。
 
-use crate::hotkeys::Action;
+use crate::hotkeys::{self, Action};
 use crate::services::languagetool::{self, Issue};
 use crate::services::youdao::{self, Entry};
 use crate::services::{self, Res, Translation};
@@ -13,6 +13,9 @@ use std::time::Duration;
 /// 当前这次操作的数据；只在 UI 线程访问。
 #[derive(Default)]
 struct State {
+    /// 每次发起请求或关闭弹窗加一；请求结果回来时序号对不上就丢弃
+    seq: u64,
+    action: Option<Action>,
     text: String,
     issues: Vec<Issue>,
     picks: Vec<Option<usize>>,
@@ -66,6 +69,37 @@ fn hide(weak: &Weak<Popup>) {
     if let Some(ui) = weak.upgrade() {
         let _ = ui.hide();
     }
+    hotkeys::watch_clicks(false);
+    // 还没回来的结果作废，免得关掉后又弹出来
+    STATE.with(|s| s.borrow_mut().seq += 1);
+}
+
+/// 鼠标在弹窗外按下时关闭弹窗，和其他划词软件一样。
+pub fn on_click() {
+    let ui = app::popup();
+    let window = ui.window();
+    if !window.is_visible() {
+        return;
+    }
+    let Some((x, y)) = input::cursor() else {
+        return;
+    };
+    // 光标坐标：Windows 是物理像素，macOS 是逻辑点（同 show_at_cursor）
+    let unit = if cfg!(target_os = "macos") {
+        window.scale_factor()
+    } else {
+        1.0
+    };
+    let (pos, size) = (window.position(), window.size());
+    let rect = popup_size::Rect {
+        x: pos.x as f32 / unit,
+        y: pos.y as f32 / unit,
+        w: size.width as f32 / unit,
+        h: size.height as f32 / unit,
+    };
+    if !rect.contains((x as f32, y as f32)) {
+        hide(&ui.as_weak());
+    }
 }
 
 fn show_at_cursor(ui: &Popup) {
@@ -94,19 +128,40 @@ fn show_at_cursor(ui: &Popup) {
         }
     }
     let _ = ui.show();
+    hotkeys::watch_clicks(true);
 }
 
 pub fn run(action: Action) {
-    let Some(text) = input::grab_selection() else {
-        return;
-    };
     let ui = app::popup();
+    let visible = ui.window().is_visible();
+    let text = if visible {
+        // 弹窗开着时按另一个快捷键：沿用这次的文字切换功能（按错键时不用关掉重来）。
+        // 这时焦点在弹窗上，再模拟复制也取不到原来的选中内容。
+        let (text, current) = STATE.with(|s| {
+            let s = s.borrow();
+            (s.text.clone(), s.action)
+        });
+        if current == Some(action) {
+            return;
+        }
+        text
+    } else {
+        let Some(text) = input::grab_selection() else {
+            return;
+        };
+        text
+    };
     let (agent, target) = app::with(|a| (a.agent.clone(), a.cfg.target_lang.clone()));
-    STATE.with(|s| {
-        *s.borrow_mut() = State {
+    let seq = STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        let seq = s.seq + 1;
+        *s = State {
+            seq,
+            action: Some(action),
             text: text.clone(),
             ..Default::default()
-        }
+        };
+        seq
     });
 
     ui.set_mode("loading".into());
@@ -120,21 +175,33 @@ pub fn run(action: Action) {
     );
     ui.set_note("".into());
     ui.set_service("".into());
-    show_at_cursor(&ui);
+    // 切换功能时弹窗留在原处
+    if !visible {
+        show_at_cursor(&ui);
+    }
 
     let weak = ui.as_weak();
     std::thread::spawn(move || match action {
         Action::Check => {
             let r = languagetool::check(&agent, &text);
-            let _ = weak.upgrade_in_event_loop(move |ui| on_checked(&ui, r));
+            deliver(weak, seq, move |ui| on_checked(ui, r));
         }
         Action::Translate if services::is_single_word(&text) => {
             let r = youdao::lookup(&agent, text.trim());
-            let _ = weak.upgrade_in_event_loop(move |ui| on_looked_up(&ui, r));
+            deliver(weak, seq, move |ui| on_looked_up(ui, r));
         }
         Action::Translate => {
             let r = services::translate(&agent, &text, &target);
-            let _ = weak.upgrade_in_event_loop(move |ui| on_translated(&ui, &text, r));
+            deliver(weak, seq, move |ui| on_translated(ui, &text, r));
+        }
+    });
+}
+
+/// 把结果交给 UI 线程；用户已经关掉弹窗或切换了功能时丢弃。
+fn deliver(weak: Weak<Popup>, seq: u64, f: impl FnOnce(&Popup) + Send + 'static) {
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        if STATE.with(|s| s.borrow().seq) == seq {
+            f(&ui);
         }
     });
 }

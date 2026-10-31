@@ -24,6 +24,13 @@ pub struct Rect {
     pub h: f32,
 }
 
+impl Rect {
+    /// 右边和下边不算在内。
+    pub fn contains(&self, (x, y): (f32, f32)) -> bool {
+        x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Placement {
     /// 逻辑尺寸
@@ -100,6 +107,20 @@ mod tests {
     fn clamped_at_right_edge_and_flipped_above() {
         let p = place((2500.0, 1400.0), QHD, 1.0);
         assert_eq!(p.pos, (2560.0 - 800.0, 1400.0 - 12.0 - 400.0));
+    }
+
+    #[test]
+    fn contains_point() {
+        let r = Rect {
+            x: 100.0,
+            y: 50.0,
+            w: 800.0,
+            h: 400.0,
+        };
+        assert!(r.contains((100.0, 50.0)));
+        assert!(r.contains((899.0, 449.0)));
+        assert!(!r.contains((900.0, 200.0)));
+        assert!(!r.contains((500.0, 49.0)));
     }
 
     #[test]
