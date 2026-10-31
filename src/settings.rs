@@ -2,7 +2,7 @@
 
 use crate::config::{self, Config, Hotkeys};
 use crate::hotkeys::{self, ACTIONS, Mode, binding};
-use crate::{HotkeyRow, SettingsWindow, app, services};
+use crate::{HotkeyRow, SettingsWindow, app, services, tray};
 use slint::{CloseRequestResponse, ComponentHandle, ModelRc, SharedString, VecModel};
 use std::cell::RefCell;
 
@@ -85,6 +85,7 @@ pub fn open(error: &str) {
     fill(&ui, &cfg);
     ui.set_error(error.into());
     let _ = ui.show();
+    tray::apply_window_icon(ui.window());
 }
 
 /// 钩子录到按键（None 表示用户按 Esc 取消）。

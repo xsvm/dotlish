@@ -248,6 +248,13 @@ fn show_at_cursor(ui: &Popup) {
         }
     }
     let _ = ui.show();
+    // 弹窗像输入法候选框一样不进任务栏
+    #[cfg(windows)]
+    {
+        use slint::winit_030::WinitWindowAccessor;
+        use slint::winit_030::winit::platform::windows::WindowExtWindows;
+        ui.window().with_winit_window(|w| w.set_skip_taskbar(true));
+    }
     hotkeys::watch_clicks(true);
 }
 

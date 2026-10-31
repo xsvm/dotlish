@@ -207,7 +207,6 @@ export component Popup inherits Window {
     in property <bool> word-open;
     in property <DictData> word-dict;
     in property <string> word-note;
-    in property <image> window-icon;
 
     callback dismiss();
     callback copy-result();
@@ -236,7 +235,6 @@ export component Popup inherits Window {
     no-frame: true;
     always-on-top: true;
     title: "Dotlish";
-    icon: root.window-icon;
     background: transparent;
     default-font-size: 14px;
 

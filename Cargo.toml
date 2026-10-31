@@ -23,6 +23,8 @@ slint = { version = "1.18.1", default-features = false, features = [
     "accessibility",
     "compat-1-2",
     "system-tray",
+    # 直接给 winit 窗口设图标、不进任务栏（见 tray::apply_window_icon）
+    "unstable-winit-030",
 ] }
 toml = "1.1.8"
 tray-icon = "0.26.1"

@@ -16,7 +16,6 @@ component Label inherits Text {
 }
 
 export component SettingsWindow inherits Window {
-    in property <image> window-icon;
     in property <[HotkeyRow]> hotkeys;
     // 正在录制的行，-1 表示没有
     in property <int> recording: -1;
@@ -33,7 +32,6 @@ export component SettingsWindow inherits Window {
     callback save();
 
     title: "Dotlish 设置";
-    icon: root.window-icon;
     preferred-width: 520px;
     min-width: 460px;
     default-font-size: 14px;

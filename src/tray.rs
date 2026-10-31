@@ -51,13 +51,26 @@ impl Tray {
 }
 
 const ICON_SIZE: u32 = 32;
+/// 任务栏大图标在 200% 缩放下是 64px，小图标由系统缩小
+const WINDOW_ICON_SIZE: u32 = 64;
 
-/// 窗口图标与托盘图标一致。
-pub fn window_icon() -> slint::Image {
-    let px = icon_rgba(ICON_SIZE);
-    slint::Image::from_rgba8(slint::SharedPixelBuffer::clone_from_slice(
-        &px, ICON_SIZE, ICON_SIZE,
-    ))
+/// 标题栏和任务栏图标，与托盘图标一致；窗口显示之后调用。
+/// 不用 Slint 的 `icon` 属性：代码生成的图片没有缓存键，Slint 认为“图标没变”就永远不设置。
+pub fn apply_window_icon(window: &slint::Window) {
+    use slint::winit_030::WinitWindowAccessor;
+    use slint::winit_030::winit::window::Icon;
+    window.with_winit_window(|w| {
+        let size = WINDOW_ICON_SIZE;
+        let Ok(icon) = Icon::from_rgba(icon_rgba(size), size, size) else {
+            return;
+        };
+        #[cfg(windows)]
+        {
+            use slint::winit_030::winit::platform::windows::WindowExtWindows;
+            w.set_taskbar_icon(Some(icon.clone()));
+        }
+        w.set_window_icon(Some(icon));
+    });
 }
 
 /// 临时图标：蓝色圆角方块上两条白线（代表文字）。以后换成正式图标。

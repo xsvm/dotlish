@@ -44,11 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         move || services::bing::warm_up(&agent)
     });
 
-    let icon = tray::window_icon();
     let popup = Popup::new()?;
     let settings = SettingsWindow::new()?;
-    popup.set_window_icon(icon.clone());
-    settings.set_window_icon(icon);
     popup::setup(&popup);
     settings::setup(&settings);
 
