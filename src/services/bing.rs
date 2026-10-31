@@ -26,11 +26,7 @@ pub fn translate(agent: &Agent, text: &str, target: &str) -> Res<String> {
     let to = lang(target);
     AUTH.call(
         TTL,
-        || {
-            parse_auth(&read(
-                agent.get(PAGE).header("User-Agent", BROWSER_UA).call(),
-            )?)
-        },
+        || fetch_auth(agent),
         |a| {
             let resp = agent
                 .post(API)
@@ -48,6 +44,17 @@ pub fn translate(agent: &Agent, text: &str, target: &str) -> Res<String> {
             parse(&read(resp)?)
         },
     )
+}
+
+/// 启动时在后台先取好令牌（约 1 秒），第一次翻译就不用等。失败无所谓，翻译时会再取。
+pub fn warm_up(agent: &Agent) {
+    let _ = AUTH.call(TTL, || fetch_auth(agent), |_| Ok(Some(())));
+}
+
+fn fetch_auth(agent: &Agent) -> Res<Auth> {
+    parse_auth(&read(
+        agent.get(PAGE).header("User-Agent", BROWSER_UA).call(),
+    )?)
 }
 
 fn lang(target: &str) -> &str {

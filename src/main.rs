@@ -39,6 +39,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cfg = config::load();
     let agent = services::agent(&cfg)?;
+    std::thread::spawn({
+        let agent = agent.clone();
+        move || services::bing::warm_up(&agent)
+    });
 
     let icon = tray::window_icon();
     let popup = Popup::new()?;
