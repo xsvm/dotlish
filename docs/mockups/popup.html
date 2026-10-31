@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popup Mockup</title>
+<style>
+  :root {
+    --bg: #dfe3ea;
+    --surface: #fbfbfc;
+    --muted: #f1f2f5;
+    --line: rgba(0, 0, 0, 0.07);
+    --text: #1d1f24;
+    --text-2: #737a87;
+    --accent: #2f6fde;
+    --err: #d4473b;
+    --warn: #c08a2b;
+    --add: rgba(43, 138, 87, 0.14);
+    --shadow: 0 12px 40px rgba(15, 23, 42, 0.16);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121418;
+      --surface: #23252b;
+      --muted: #2c2f36;
+      --line: rgba(255, 255, 255, 0.07);
+      --text: #e6e8ec;
+      --text-2: #8d93a0;
+      --accent: #6ea0ff;
+      --err: #ff7b6e;
+      --warn: #e2b04a;
+      --add: rgba(95, 207, 143, 0.16);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121418;
+    --surface: #23252b;
+    --muted: #2c2f36;
+    --line: rgba(255, 255, 255, 0.07);
+    --text: #e6e8ec;
+    --text-2: #8d93a0;
+    --accent: #6ea0ff;
+    --err: #ff7b6e;
+    --warn: #e2b04a;
+    --add: rgba(95, 207, 143, 0.16);
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ---------- 页面工具栏（不属于弹窗） ---------- */
+  .page-bar {
+    max-width: 1200px; margin: 0 auto;
+    padding: 20px 16px 4px;
+    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+  }
+  .page-bar h1 { font-size: 16px; font-weight: 600; margin: 0; flex: 1; min-width: 200px; }
+  .seg { display: inline-flex; background: var(--muted); border-radius: 7px; padding: 2px; }
+  .seg button { border: 0; background: none; color: var(--text-2); padding: 3px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+  .seg button.on { background: var(--surface); color: var(--text); }
+  .size-note { max-width: 1200px; margin: 0 auto; padding: 0 16px; font-size: 12px; color: var(--text-2); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 16px 16px 48px; display: grid; gap: 28px; }
+  .label { font-size: 12px; color: var(--text-2); margin: 0 0 8px; }
+  .fit { transform-origin: top left; }
+
+  /* ---------- 弹窗 ---------- */
+  .popup {
+    width: var(--w); height: var(--h);
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 12px 0 20px;
+    font-size: 13px; color: var(--text-2);
+  }
+  .head .t { color: var(--text); font-weight: 600; }
+  .head .x {
+    margin-left: auto; width: 26px; height: 26px; border: 0; border-radius: 6px;
+    background: none; color: var(--text-2); cursor: pointer; font-size: 15px; line-height: 1;
+  }
+  .head .x:hover { background: var(--muted); color: var(--text); }
+  .content { flex: 1; min-height: 0; padding: 10px 20px; overflow: auto; }
+  .foot {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px 12px 20px;
+    font-size: 12px; color: var(--text-2);
+  }
+  .foot .sp { flex: 1; }
+  .btn {
+    border: 0; border-radius: 6px; padding: 5px 14px; font-size: 13px;
+    background: var(--muted); cursor: pointer;
+  }
+  .btn:hover { filter: brightness(0.97); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  kbd { font: 11px ui-monospace, "Cascadia Mono", Menlo, monospace; color: var(--text-2); }
+
+  /* 纠错：原文内联显示修改 */
+  .doc { font-size: 15px; line-height: 1.9; }
+  .fixspan { cursor: pointer; border-radius: 3px; padding: 1px 0; }
+  .fixspan del { color: var(--text-2); text-decoration-color: var(--err); }
+  .fixspan ins { text-decoration: none; background: var(--add); border-radius: 3px; padding: 0 2px; margin-left: 2px; }
+  .fixspan.style del { text-decoration-color: var(--warn); }
+  .fixspan.off del { text-decoration: none; color: var(--text); border-bottom: 1.5px dashed var(--text-2); }
+  .fixspan.off ins { display: none; }
+  .fixspan.active { outline: 1.5px solid var(--accent); outline-offset: 2px; }
+  .detail {
+    margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px;
+  }
+  .detail .why { color: var(--text-2); flex-basis: 100%; }
+  .cand { border: 0; border-radius: 5px; padding: 1px 10px; background: var(--muted); cursor: pointer; font-size: 13px; }
+  .cand.on { background: var(--accent); color: #fff; }
+  .cand.skip { background: none; color: var(--text-2); }
+
+  /* 翻译：左右两栏 */
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; height: 100%; }
+  .two .src { color: var(--text-2); font-size: 14px; }
+  .two .dst { font-size: 15px; line-height: 1.8; }
+  .two .col { min-height: 0; overflow: auto; }
+  .lang-label { font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+  .svc { display: inline-flex; gap: 2px; }
+  .svc button { border: 0; background: none; color: var(--text-2); font-size: 12px; padding: 1px 6px; border-radius: 4px; cursor: pointer; }
+  .svc button.on { color: var(--accent); background: var(--muted); }
+  .svc button:disabled { opacity: .4; cursor: default; }
+  .warn { color: var(--warn); }
+
+  /* 查词 */
+  .word { font-size: 26px; font-weight: 600; line-height: 1.2; }
+  .phon { color: var(--text-2); font-size: 13px; margin: 4px 0 14px; }
+  .phon button { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0 4px; }
+  .def { font-size: 15px; }
+  .def i { color: var(--text-2); margin-right: 10px; }
+  .ex { margin-top: 14px; font-size: 13px; color: var(--text-2); }
+
+  /* 设置 */
+  .hk-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .hk-row:last-child { border-bottom: 0; }
+  .hk-row span { flex: 1; }
+  .rec { border: 0; border-radius: 6px; padding: 4px 12px; min-width: 150px; background: var(--muted); cursor: pointer; font-size: 13px; }
+  .rec.recording { color: var(--accent); }
+  .rec.conflict { color: var(--err); }
+
+  /* 加载 */
+  .bar-load { height: 2px; background: var(--muted); overflow: hidden; }
+  .bar-load::after {
+    content: ""; display: block; height: 100%; width: 30%;
+    background: var(--accent); animation: slide 1s ease-in-out infinite;
+  }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+  .ghost { height: 10px; border-radius: 4px; background: var(--muted); margin: 12px 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 16px);
+    background: var(--text); color: var(--bg); padding: 6px 14px; border-radius: 7px; font-size: 13px;
+    opacity: 0; transition: .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<div class="page-bar">
+  <h1>select-assist 弹窗原型 · 简约版</h1>
+  <div class="seg" id="sizeSeg">
+    <button data-size="ratio" class="on">按屏幕比例</button>
+    <button data-size="px">800×400 物理像素</button>
+  </div>
+  <div class="seg" id="osSeg">
+    <button data-os="win" class="on">Windows</button>
+    <button data-os="mac">macOS</button>
+  </div>
+  <div class="seg" id="themeSeg">
+    <button data-theme="auto" class="on">跟随系统</button>
+    <button data-theme="light">浅色</button>
+    <button data-theme="dark">深色</button>
+  </div>
+</div>
+<div class="size-note" id="sizeNote"></div>
+
+<main>
+  <!-- 纠错 -->
+  <section>
+    <div class="label">纠错 · 点击带删除线的地方可以换候选或跳过</div>
+    <div class="fit"><div class="popup">
+      <div class="head"><span class="t">纠错</span><span id="ckCount"></span><button class="x" title="关闭 (Esc)">✕</button></div>
+      <div class="content">
+        <div class="doc" id="doc"></div>
+        <div class="detail" id="detail"></div>
+      </div>
+      <div class="foot">
+        <span>Harper · 本地</span>
+        <span class="sp"></span>
+        <kbd><span class="mod">Ctrl</span>+Enter</kbd>
+        <button class="btn" data-toast="已复制">复制</button>
+        <button class="btn primary" data-toast="已替换原文">替换</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 翻译 -->
+  <section>
+    <div class="label">翻译 · 左原文右译文；没有代理时自动换 MyMemory</div>
+    <div class="fit"><div class="popup">
+      <div class="head"><span class="t">翻译</span><span>英语 → 简体中文</span><button class="x" title="关闭 (Esc)">✕</button></div>
+      <div class="content">
+        <div class="two">
+          <div class="col">
+            <div class="lang-label">原文</div>
+            <div class="src">Most successful products are not the result of a single brilliant idea, but of many small decisions made consistently over time.</div>
+          </div>
+          <div class="col">
+            <div class="lang-label">译文</div>
+            <div class="dst" id="trOut"></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <span class="svc" id="svc">
+          <button data-svc="google">Google</button>
+          <button data-svc="mymemory">MyMemory</button>
+        </span>
+        <span class="warn" id="trWarn">Google 不可用，已改用 MyMemory</span>
+        <span class="sp"></span>
+        <button class="btn" id="proxyBtn"></button>
+        <button class="btn" data-toast="已复制译文">复制</button>
+        <button class="btn primary" data-toast="已用译文替换原文">替换</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 查词 -->
+  <section>
+    <div class="label">查词 · 选中的是单个词时自动切换</div>
+    <div class="fit"><div class="popup">
+      <div class="head"><span class="t">词典</span><button class="x" title="关闭 (Esc)">✕</button></div>
+      <div class="content">
+        <div class="word">serendipity</div>
+        <div class="phon">英 /ˌserənˈdɪpəti/ <button title="发音">▶</button> · 美 /ˌserənˈdɪpəti/ <button title="发音">▶</button></div>
+        <div class="def"><i>n.</i>意外发现美好事物的运气；机缘巧合</div>
+        <div class="ex">Finding the old letter was pure serendipity.<br>找到那封旧信纯属机缘巧合。</div>
+      </div>
+      <div class="foot">
+        <span>有道词典</span>
+        <span class="sp"></span>
+        <button class="btn" data-toast="已复制释义">复制</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 设置 -->
+  <section>
+    <div class="label">设置 · 快捷键（点击后按组合键录制，Esc 取消，Backspace 清除）</div>
+    <div class="fit"><div class="popup">
+      <div class="head"><span class="t">快捷键</span><button class="x" title="关闭">✕</button></div>
+      <div class="content" id="hkRows"></div>
+      <div class="foot">
+        <span id="hkHint"></span>
+        <span class="sp"></span>
+        <button class="btn" id="hkReset">恢复默认</button>
+        <button class="btn primary" data-toast="已保存">保存</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 加载 -->
+  <section>
+    <div class="label">加载中</div>
+    <div class="fit"><div class="popup">
+      <div class="bar-load"></div>
+      <div class="head"><span class="t">纠错</span><span>正在检查…</span><button class="x" title="关闭 (Esc)">✕</button></div>
+      <div class="content">
+        <div class="ghost" style="width:94%"></div>
+        <div class="ghost" style="width:81%"></div>
+        <div class="ghost" style="width:63%"></div>
+      </div>
+    </div></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------- 尺寸：800×400 物理像素，或按 2560×1440 上的比例 ----------
+  const RATIO_W = 800 / 2560, RATIO_H = 400 / 1440;
+  // 高缩放屏幕上按比例算出来的逻辑尺寸太小，内容装不下，所以设一个下限（逻辑像素）
+  const MIN_W = 640, MIN_H = 320;
+  let sizeMode = "ratio";
+  function applySize() {
+    const dpr = window.devicePixelRatio || 1;
+    let w, h;
+    if (sizeMode === "px") { w = 800 / dpr; h = 400 / dpr; }
+    else { w = Math.max(screen.width * RATIO_W, MIN_W); h = Math.max(screen.height * RATIO_H, MIN_H); }
+    w = Math.round(w); h = Math.round(h);
+    document.documentElement.style.setProperty("--w", w + "px");
+    document.documentElement.style.setProperty("--h", h + "px");
+    const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    document.getElementById("sizeNote").textContent =
+      `当前屏幕 ${Math.round(screen.width * dpr)}×${Math.round(screen.height * dpr)} 物理像素，缩放 ${Math.round(dpr * 100)}%。` +
+      `弹窗 ${pw}×${ph} 物理像素 = ${w}×${h} 逻辑像素` +
+      (sizeMode === "ratio" ? `（宽 ${(RATIO_W * 100).toFixed(1)}% × 高 ${(RATIO_H * 100).toFixed(1)}% 屏幕，最小 ${MIN_W}×${MIN_H} 逻辑像素）。` : "。");
+    fit();
+  }
+  // 面板比弹窗窄时整体缩小显示，不改变弹窗本身尺寸
+  function fit() {
+    const w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--w"));
+    const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--h"));
+    const avail = document.querySelector("main").clientWidth - 32;
+    if (avail <= 0) return; // 面板隐藏时没有宽度，等 resize 再算
+    const s = Math.min(1, avail / w);
+    document.querySelectorAll(".fit").forEach(el => {
+      el.style.transform = s < 1 ? `scale(${s})` : "";
+      el.style.height = (h * s) + "px";
+    });
+  }
+  window.addEventListener("resize", applySize); // 拖到不同缩放的显示器时 dpr 会变
+  document.querySelectorAll("#sizeSeg button").forEach(b => b.onclick = () => {
+    sizeMode = b.dataset.size;
+    document.querySelectorAll("#sizeSeg button").forEach(x => x.classList.toggle("on", x === b));
+    applySize();
+  });
+
+  // ---------- 平台 / 主题 ----------
+  let os = "win";
+  const modName = () => os === "mac" ? "⌘" : "Ctrl";
+  const altName = () => os === "mac" ? "⌥" : "Alt";
+  const shiftName = () => os === "mac" ? "⇧" : "Shift";
+  document.querySelectorAll("#osSeg button").forEach(b => b.onclick = () => {
+    os = b.dataset.os;
+    document.querySelectorAll("#osSeg button").forEach(x => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".mod").forEach(k => k.textContent = modName());
+    renderHotkeys();
+  });
+  document.querySelectorAll("#themeSeg button").forEach(b => b.onclick = () => {
+    const t = b.dataset.theme;
+    if (t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    document.querySelectorAll("#themeSeg button").forEach(x => x.classList.toggle("on", x === b));
+  });
+
+  // ---------- 纠错 ----------
+  const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const segs = [
+    { i: 0, text: "Their is" },
+    " a lot of reasons why this approach ",
+    { i: 1, text: "dont" },
+    " work, and we ",
+    { i: 2, text: "should of" },
+    " tested it ",
+    { i: 3, text: "more earlier" },
+    "."
+  ];
+  const issues = [
+    { style: false, why: "主谓不一致：“reasons” 是复数。", cands: ["There are", "There is"], pick: 0 },
+    { style: false, why: "缺少撇号；主语 “this approach” 是单数。", cands: ["doesn't", "does not"], pick: 0 },
+    { style: false, why: "常见误用：“should of” 应为 “should have”。", cands: ["should have", "should've"], pick: 0 },
+    { style: true, why: "文风：比较级重复。", cands: ["earlier", "sooner"], pick: -1 }
+  ];
+  let active = 0;
+  function renderCheck() {
+    document.getElementById("doc").innerHTML = segs.map(s => {
+      if (typeof s === "string") return esc(s);
+      const it = issues[s.i];
+      const cls = ["fixspan", it.style ? "style" : "", it.pick < 0 ? "off" : "", s.i === active ? "active" : ""].join(" ");
+      return `<span class="${cls}" data-i="${s.i}"><del>${esc(s.text)}</del>${it.pick >= 0 ? `<ins>${esc(it.cands[it.pick])}</ins>` : ""}</span>`;
+    }).join("");
+    const it = issues[active];
+    document.getElementById("detail").innerHTML =
+      `<span class="why">${it.why}</span>` +
+      it.cands.map((c, j) => `<button class="cand ${j === it.pick ? "on" : ""}" data-j="${j}">${esc(c)}</button>`).join("") +
+      `<button class="cand skip ${it.pick < 0 ? "on" : ""}" data-j="-1">保留原文</button>`;
+    const n = issues.filter(x => x.pick >= 0).length;
+    document.getElementById("ckCount").textContent = `${n}/${issues.length} 处修改`;
+  }
+  document.getElementById("doc").addEventListener("click", e => {
+    const s = e.target.closest(".fixspan"); if (!s) return;
+    active = +s.dataset.i; renderCheck();
+  });
+  document.getElementById("detail").addEventListener("click", e => {
+    const c = e.target.closest(".cand"); if (!c) return;
+    issues[active].pick = +c.dataset.j; renderCheck();
+  });
+  renderCheck();
+
+  // ---------- 翻译 ----------
+  const tr = {
+    google: "大多数成功的产品并非源于某个绝妙的想法，而是长期以来持续做出的许多小决定的结果。",
+    mymemory: "大多数成功的产品不是单一绝妙想法的结果，而是随着时间推移一致做出的许多小决定。"
+  };
+  let proxy = false, svc = "mymemory";
+  function renderTr() {
+    if (!proxy && svc === "google") svc = "mymemory";
+    document.querySelectorAll("#svc button").forEach(b => {
+      b.classList.toggle("on", b.dataset.svc === svc);
+      b.disabled = b.dataset.svc === "google" && !proxy;
+    });
+    document.getElementById("trOut").textContent = tr[svc];
+    document.getElementById("trWarn").style.display = proxy ? "none" : "";
+    document.getElementById("proxyBtn").textContent = proxy ? "模拟：无代理" : "模拟：有代理";
+  }
+  document.getElementById("svc").onclick = e => {
+    const b = e.target.closest("button"); if (!b || b.disabled) return;
+    svc = b.dataset.svc; renderTr();
+  };
+  document.getElementById("proxyBtn").onclick = () => { proxy = !proxy; svc = proxy ? "google" : "mymemory"; renderTr(); };
+  renderTr();
+
+  // ---------- 快捷键 ----------
+  const defaults = [
+    { id: "check", name: "纠错", keys: ["mod", "alt", "G"] },
+    { id: "fix", name: "一键修正", keys: ["mod", "alt", "shift", "G"] },
+    { id: "trans", name: "翻译 / 查词", keys: ["mod", "alt", "T"] }
+  ];
+  let hotkeys = defaults.map(h => ({ ...h, keys: [...h.keys] }));
+  let recording = null;
+  const keyLabel = k => k === "mod" ? modName() : k === "alt" ? altName() : k === "shift" ? shiftName() : k;
+  const fmt = keys => keys.length ? keys.map(keyLabel).join(os === "mac" ? " " : " + ") : "未设置";
+  const sig = keys => keys.join("+");
+  function renderHotkeys() {
+    const seen = {};
+    hotkeys.forEach(h => { if (h.keys.length) seen[sig(h.keys)] = (seen[sig(h.keys)] || 0) + 1; });
+    document.getElementById("hkRows").innerHTML = hotkeys.map(h => {
+      const conflict = h.keys.length && seen[sig(h.keys)] > 1;
+      const rec = recording === h.id;
+      return `<div class="hk-row"><span>${h.name}</span><button class="rec ${rec ? "recording" : ""} ${conflict ? "conflict" : ""}" data-id="${h.id}">${rec ? "请按下组合键…" : fmt(h.keys)}</button></div>`;
+    }).join("");
+    const bad = Object.values(seen).some(n => n > 1);
+    const hint = document.getElementById("hkHint");
+    hint.textContent = bad ? "快捷键冲突" : "";
+    hint.style.color = bad ? "var(--err)" : "";
+  }
+  document.getElementById("hkRows").onclick = e => {
+    const b = e.target.closest(".rec"); if (!b) return;
+    recording = recording === b.dataset.id ? null : b.dataset.id;
+    renderHotkeys();
+  };
+  document.getElementById("hkReset").onclick = () => {
+    hotkeys = defaults.map(h => ({ ...h, keys: [...h.keys] })); recording = null; renderHotkeys();
+  };
+  window.addEventListener("keydown", e => {
+    if (!recording) return;
+    e.preventDefault();
+    const h = hotkeys.find(x => x.id === recording);
+    if (e.key === "Escape") { recording = null; renderHotkeys(); return; }
+    if (e.key === "Backspace" && !e.ctrlKey && !e.metaKey && !e.altKey) { h.keys = []; recording = null; renderHotkeys(); return; }
+    if (["Control", "Meta", "Alt", "Shift"].includes(e.key)) return;
+    const keys = [];
+    if (e.ctrlKey || e.metaKey) keys.push("mod");
+    if (e.altKey) keys.push("alt");
+    if (e.shiftKey) keys.push("shift");
+    if (!keys.length) return; // 必须带修饰键
+    keys.push(e.code.startsWith("Key") ? e.code.slice(3) : e.code.startsWith("Digit") ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key);
+    h.keys = keys; recording = null; renderHotkeys();
+  });
+  renderHotkeys();
+
+  // ---------- toast ----------
+  const toast = document.getElementById("toast");
+  let tt;
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-toast]"); if (!b) return;
+    toast.textContent = b.dataset.toast;
+    toast.classList.add("show");
+    clearTimeout(tt); tt = setTimeout(() => toast.classList.remove("show"), 1400);
+  });
+
+  applySize();
+</script>
+</body>
+</html>
