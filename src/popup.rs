@@ -2,7 +2,7 @@
 
 use crate::hotkeys::{self, Action};
 use crate::services::languagetool::{self, Issue};
-use crate::services::ovh;
+use crate::services::ovh::{self, Checked};
 use crate::services::youdao::{self, Accent, Entry};
 use crate::services::{self, Res, Translation};
 use crate::{DictData, IssueItem, Popup, app, audio, input, popup_size};
@@ -314,9 +314,14 @@ pub fn run(action: Action) {
     std::thread::spawn(move || match action {
         Action::Check => {
             // 只用 AI；所有模型都失败或在限流冷却时才退回 LanguageTool
-            let r = ovh::check(&agent, &text).or_else(|ai| {
+            let r = ovh::check(&agent, &text, &target).or_else(|ai| {
                 languagetool::check(&agent, &text)
-                    .map(|i| (i, "LanguageTool（AI 暂不可用）"))
+                    .map(|issues| Checked {
+                        issues,
+                        language: String::new(),
+                        translation: String::new(),
+                        service: "LanguageTool（AI 暂不可用）",
+                    })
                     .map_err(|lt| format!("{ai}\nLanguageTool：{lt}"))
             });
             deliver(weak, seq, move |ui| on_checked(ui, r));
@@ -341,8 +346,13 @@ fn deliver(weak: Weak<Popup>, seq: u64, f: impl FnOnce(&Popup) + Send + 'static)
     });
 }
 
-fn on_checked(ui: &Popup, r: Res<(Vec<Issue>, &'static str)>) {
-    let (issues, service) = match r {
+fn on_checked(ui: &Popup, r: Res<Checked>) {
+    let Checked {
+        issues,
+        language,
+        translation,
+        service,
+    } = match r {
         Ok(r) => r,
         Err(e) => return show_error(ui, &e),
     };
@@ -356,8 +366,13 @@ fn on_checked(ui: &Popup, r: Res<(Vec<Issue>, &'static str)>) {
         s.result = languagetool::apply(&s.text, &s.issues, &s.picks);
         s.model = Rc::new((0..s.issues.len()).map(|i| issue_item(&s, i)).collect());
         ui.set_issues(ModelRc::from(s.model.clone()));
+        ui.set_translation(translation.into());
         ui.set_mode("check".into());
-        ui.set_service(service.into());
+        ui.set_service(if language.is_empty() {
+            service.into()
+        } else {
+            format!("{language} · {service}").into()
+        });
         show_check_summary(ui, &s);
     });
 }

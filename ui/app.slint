@@ -202,6 +202,8 @@ export component Popup inherits Window {
     in property <string> source-text;
     in property <string> result-text;
     in property <[IssueItem]> issues;
+    // 纠错后整句的译文，为空时不显示
+    in property <string> translation;
     in property <DictData> dict;
     // 翻译页右侧的单词释义
     in property <bool> word-open;
@@ -314,11 +316,19 @@ export component Popup inherits Window {
 
                     if root.mode == "check": ScrollView {
                         VerticalLayout {
+                            alignment: start;
                             spacing: 10px;
                             padding-right: 16px;
                             Text {
                                 text: root.result-text;
                                 font-size: 15px;
+                                line-height-factor: 1.25;
+                                wrap: word-wrap;
+                            }
+                            if root.translation != "": Text {
+                                text: root.translation;
+                                color: #6b7180;
+                                font-size: 14px;
                                 line-height-factor: 1.25;
                                 wrap: word-wrap;
                             }

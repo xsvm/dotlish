@@ -61,7 +61,7 @@ export component SettingsWindow inherits Window {
             wrap: word-wrap;
         }
 
-        Section { text: "网络与翻译"; }
+        Section { text: "语言与网络"; }
         HorizontalLayout {
             spacing: 12px;
             Label { text: "代理"; }
@@ -79,6 +79,12 @@ export component SettingsWindow inherits Window {
                 current-index <=> root.language-index;
                 horizontal-stretch: 1;
             }
+        }
+        Text {
+            text: "纠错时自动识别所选文字的语言；每处修改的说明和整句译文用“翻译成”的语言，文字本来就是这个语言时不给译文。";
+            color: #737a87;
+            font-size: 12px;
+            wrap: word-wrap;
         }
 
         if root.error != "": Text {

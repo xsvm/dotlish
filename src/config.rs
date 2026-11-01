@@ -7,8 +7,28 @@ pub struct Config {
     pub hotkeys: Hotkeys,
     /// 为空时读取环境变量 HTTPS_PROXY / HTTP_PROXY / ALL_PROXY
     pub proxy: String,
-    /// 选中内容不是中文时翻译成这个语言
+    /// 选中内容不是中文时翻译成这个语言；纠错的说明和整句译文也用它
     pub target_lang: String,
+}
+
+/// (语言代码, 显示名)。显示名也直接写进大模型的提示词。
+pub const LANGUAGES: [(&str, &str); 7] = [
+    ("zh-CN", "简体中文"),
+    ("en", "English"),
+    ("ja", "日本語"),
+    ("ko", "한국어"),
+    ("fr", "Français"),
+    ("de", "Deutsch"),
+    ("es", "Español"),
+];
+
+/// 不认识的代码按列表第一个处理，和设置窗口的显示一致。
+pub fn language_index(code: &str) -> usize {
+    LANGUAGES.iter().position(|(c, _)| *c == code).unwrap_or(0)
+}
+
+pub fn language_name(code: &str) -> &'static str {
+    LANGUAGES[language_index(code)].1
 }
 
 /// 写法见 hotkeys::binding，例如 `Ctrl+Alt+KeyG`、`MouseBack`；空字符串表示未设置。

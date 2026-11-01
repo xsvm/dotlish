@@ -1,28 +1,17 @@
 //! 设置窗口：从托盘进入。编辑的是一份草稿，点保存才生效。
 
-use crate::config::{self, Config, Hotkeys};
+use crate::config::{self, Config, Hotkeys, LANGUAGES, language_index};
 use crate::hotkeys::{self, ACTIONS, Mode, binding};
 use crate::{HotkeyRow, SettingsWindow, app, services, tray};
 use slint::{CloseRequestResponse, ComponentHandle, ModelRc, SharedString, VecModel};
 use std::cell::RefCell;
 
-/// (语言代码, 显示名)
-const LANGUAGES: [(&str, &str); 7] = [
-    ("zh-CN", "简体中文"),
-    ("en", "English"),
-    ("ja", "日本語"),
-    ("ko", "한국어"),
-    ("fr", "Français"),
-    ("de", "Deutsch"),
-    ("es", "Español"),
-];
-
 thread_local! {
     static DRAFT: RefCell<Hotkeys> = RefCell::default();
 }
 
-fn language_index(code: &str) -> i32 {
-    LANGUAGES.iter().position(|(c, _)| *c == code).unwrap_or(0) as i32
+fn language_code(index: i32) -> String {
+    LANGUAGES[index.max(0) as usize].0.to_string()
 }
 
 fn row_text(spec: &str, conflict: bool) -> String {
@@ -73,7 +62,7 @@ fn stop_recording(ui: &SettingsWindow) {
 fn fill(ui: &SettingsWindow, cfg: &Config) {
     DRAFT.with(|d| *d.borrow_mut() = cfg.hotkeys.clone());
     ui.set_proxy(cfg.proxy.as_str().into());
-    ui.set_language_index(language_index(&cfg.target_lang));
+    ui.set_language_index(language_index(&cfg.target_lang) as i32);
     stop_recording(ui);
     refresh_rows(ui);
 }
@@ -128,9 +117,7 @@ fn save(ui: &SettingsWindow) -> Result<(), String> {
     let cfg = Config {
         hotkeys,
         proxy: ui.get_proxy().trim().to_string(),
-        target_lang: LANGUAGES[ui.get_language_index().max(0) as usize]
-            .0
-            .to_string(),
+        target_lang: language_code(ui.get_language_index()),
     };
     let agent = services::agent(&cfg)?;
     config::save(&cfg)?;
