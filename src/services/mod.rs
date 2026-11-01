@@ -5,6 +5,7 @@ pub mod bing;
 pub mod google;
 pub mod languagetool;
 pub mod mymemory;
+pub mod ovh;
 pub mod volcengine;
 pub mod youdao;
 

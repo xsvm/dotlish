@@ -2,6 +2,7 @@
 
 use crate::hotkeys::{self, Action};
 use crate::services::languagetool::{self, Issue};
+use crate::services::ovh;
 use crate::services::youdao::{self, Accent, Entry};
 use crate::services::{self, Res, Translation};
 use crate::{DictData, IssueItem, Popup, app, audio, input, popup_size};
@@ -312,7 +313,12 @@ pub fn run(action: Action) {
     let weak = ui.as_weak();
     std::thread::spawn(move || match action {
         Action::Check => {
-            let r = languagetool::check(&agent, &text);
+            // 只用 AI；所有模型都失败或在限流冷却时才退回 LanguageTool
+            let r = ovh::check(&agent, &text).or_else(|ai| {
+                languagetool::check(&agent, &text)
+                    .map(|i| (i, "LanguageTool（AI 暂不可用）"))
+                    .map_err(|lt| format!("{ai}\nLanguageTool：{lt}"))
+            });
             deliver(weak, seq, move |ui| on_checked(ui, r));
         }
         Action::Translate if services::is_single_word(&text) => {
@@ -335,9 +341,9 @@ fn deliver(weak: Weak<Popup>, seq: u64, f: impl FnOnce(&Popup) + Send + 'static)
     });
 }
 
-fn on_checked(ui: &Popup, r: Res<Vec<Issue>>) {
-    let issues = match r {
-        Ok(i) => i,
+fn on_checked(ui: &Popup, r: Res<(Vec<Issue>, &'static str)>) {
+    let (issues, service) = match r {
+        Ok(r) => r,
         Err(e) => return show_error(ui, &e),
     };
     STATE.with(|s| {
@@ -351,7 +357,7 @@ fn on_checked(ui: &Popup, r: Res<Vec<Issue>>) {
         s.model = Rc::new((0..s.issues.len()).map(|i| issue_item(&s, i)).collect());
         ui.set_issues(ModelRc::from(s.model.clone()));
         ui.set_mode("check".into());
-        ui.set_service("LanguageTool".into());
+        ui.set_service(service.into());
         show_check_summary(ui, &s);
     });
 }
